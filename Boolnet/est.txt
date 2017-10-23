@@ -1,0 +1,25 @@
+#Estaciones
+
+#lluvia = Precipitacion, frio = Presion, calor = Temperatura, el valor de "1" o "Activo" para el estado del nodo representa un aumento en la magnitud de la variable en cuestión, mientras que el valor de "0" o "Inactivo" representa un decremento en la misma.
+
+#Primavera (calor & frio & !lluvia), !calor & frio & !lluvia 
+#Primver (calor & !frio & !lluvia), calor & frio & !lluvia
+#Verano (calor & !frio & lluvia), calor & !frio & !lluvia
+#Otoño (!calor & !frio & lluvia), calor & !frio & lluvia 
+#Otinver (!calor & frio & lluvia), !calor & !frio & lluvia
+#Invierno (!calor & frio & !lluvia), !calor & !frio & lluvia 
+
+##Lluvias de verano a otoño.
+#lluvia, (calor & frio) | (calor & !frio) 
+Precipitacion, !Presion
+
+#Calor desde finales de la primavera hasta el verano.
+#calor, (!calor & frio) | (calor & frio)
+Temperatura, !Precipitacion
+
+#Alta Presion durante el otoño y el invierno.
+#frio, (!calor & frio) | (!calor & !frio)
+Presion, !Temperatura 
+
+
+

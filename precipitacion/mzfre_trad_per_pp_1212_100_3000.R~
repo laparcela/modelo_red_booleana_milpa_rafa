@@ -1,0 +1,260 @@
+source("~/Dropbox/Chido/tradBase.R")
+#Definiendo sistema
+nodos <-c("Temperatura", "Presion", "Precipitacion", "Herbivoros", "Depredadores", "MaizG", "FrijolEG", "CalabazaG", "Maiz", "FrijolE", "Calabaza", "MaizJ", "CalabazaJ", "Polinizadores", "FloresNoQuelites", "NoQuelites", "FloresQuelites", "Quelites", "FloresBorde", "Borde", "Desyerbe", "Herbicida", "Plaguicida")
+
+#Definiendo parametros globales
+n <-length(nodos)
+valu=2
+
+#Ciclo de simulaciones
+lista.repe <-list()
+set.seed(1212)
+rep=100	
+seed.rep <-sample(runif(100000,0,999999),rep)
+for(r in 1:rep){
+set.seed(seed.rep[r])
+
+p <-sample(0:(valu^n-1),3000,1/valu^n)
+#p <-seq(0,valu^length(nodos)-1,1)#Exploracion exhaustiva
+
+ei <-tradBase(valu,nodos,p)
+rownames(ei) <-nodos
+
+obtAtr <-function(ei,nodos,ncol.a=100){
+	n <-nrow(ei)#Orden de la red.
+	t.ei <-ncol(ei)#
+	a <-matrix(0,n,ncol.a)#Matriz para guardar la trayectoria generada en cada iteracion.
+	lista.tray <-list()#Lista para guardar las trayectorias.
+	lista.atr <-list()#Lista para guardar los atractores.
+	cuenca <-rep(1,t.ei)
+	rownames(ei)=nodos
+	rownames(a)=nodos
+
+	for (i in 1:t.ei){#Este ciclo recorre todos los estados iniciales de la matriz "ei".
+
+###Bloque 1 revisar si el estado inicial es parte de una trayectoria previa.		
+		if(i>=2){#Esta compuerta logica evalua si a partir de la segunda iteracion el estado inicial en turno ya se alcanzo en alguna trayectoria previa.
+			l.lista.tray<-length(lista.tray)
+			for(l in 1:l.lista.tray){
+				if(is.null(lista.tray[[l]])){
+					cuenca[l]=0
+					next
+				}else{
+					e <-abs(ei[,i]-lista.tray[[l]])#Distancia de Hamming.
+					dH.e <-colSums(e)
+					dH <-any(dH.e==0)
+					if(dH){
+						cuenca[l]=cuenca[l]+1
+						break
+					}
+				}
+			}		
+		}else{
+  			dH=F
+		}
+		if(dH){
+#			writeLines(paste("El estado",i,"ya es parte de la trayectoria previa",l))
+			next
+		}
+
+###Bloque 2 actualizacion de las funciones logicas.
+		a[,1]=ei[,i]#Estado inicial.
+#		writeLines(paste("Estado inicial:",i))#Mensaje que indica el estado en el que nos encotramos.
+#		print(ei[,i,drop=FALSE])#Estado inicial en el que nos encotramos.
+           
+		for (j in 2:ncol.a){#Iteracion sincronica de las funciones logicas.			
+		a<-as.data.frame(t(a))
+set.seed(i*j)
+per<-sample(0:ncol.a,1)
+
+##Funciones logicas.
+#Fijando nodos
+a$Herbicida[j-1]=0
+a$Plaguicida[j-1]=0
+a$CalabazaJ[j-1]=0
+
+#Clima
+set.seed(per)
+if(a$Presion[j-1]==0) a$Precipitacion[j]=sample(c(0,1),1,p=c(1/2,1/2))
+if(a$Presion[j-1]==1) a$Precipitacion[j]=0
+if(a$Temperatura[j-1]==0) a$Presion[j]=1 
+if(a$Temperatura[j-1]==1) a$Presion[j]=0
+if(a$Precipitacion[j-1]==0) a$Temperatura[j]=1
+if(a$Precipitacion[j-1]==1) a$Temperatura[j]=0
+
+#Suelo
+#if(a$FrijolE[j-1]==1 | a$FrijolEG[j-1]==1) a$SueN[j]=1
+#if(a$FrijolE[j-1]==0 & a$FrijolEG[j-1]==0) a$SueN[j]=0
+#if(a$Desyerbe[j-1]==1) a$SuePC[j]=1
+#if(a$Desyerbe[j-1]==0) a$SuePC[j]=0
+
+#Borde
+if(a$Borde[j-1]==1) a$Borde[j]=1 
+if(a$Borde[j-1]==0) a$Borde[j]=0
+
+if(a$Borde[j-1]==1 & a$Presion[j-1]==0) a$FloresBorde[j]=1 
+if(a$Borde[j-1]==0 | a$Presion[j-1]==1) a$FloresBorde[j]=0
+
+#mzfre
+if(a$Quelites[j-1]==1 | a$NoQuelites[j-1]==1){
+	a$Desyerbe[j]=1
+	a$Herbicida[j]=1
+}
+if(a$Quelites[j-1]==0 & a$NoQuelites[j-1]==0){
+	a$Desyerbe[j]=0
+	a$Herbicida[j]=0
+}
+
+if(a$Presion[j-1]==0 & a$Temperatura[j-1]==1 & a$Precipitacion[j-1]==0)	Siembra=1
+if(a$Presion[j-1]==1 | a$Temperatura[j-1]==0 | a$Precipitacion[j-1]==1)	Siembra=0
+
+if(Siembra==1 & a$MaizJ[j-1]==0 & a$CalabazaJ[j-1]==0){
+	a$MaizJ[j]=1 
+	a$CalabazaJ[j]=1
+}
+if(Siembra==0 | a$MaizJ[j-1]==1 | a$CalabazaJ[j-1]==1){
+	a$MaizJ[j]=0
+	a$CalabazaJ[j]=0
+}
+
+#Cultivos adultos
+if(a$MaizJ[j-1]==1 & (a$Quelites[j-1]==0 & a$NoQuelites[j-1]==0) & a$Precipitacion[j-1]==1) a$Maiz[j]=1
+if(a$MaizJ[j-1]==0 | (a$Quelites[j-1]==1 | a$NoQuelites[j-1]==1) | a$Precipitacion[j-1]==0) a$Maiz[j]=0
+
+if(a$MaizJ[j-1]==1 & a$Precipitacion[j-1]==1) a$FrijolE[j]=1
+if(a$MaizJ[j-1]==0 | a$Precipitacion[j-1]==0) a$FrijolE[j]=0
+
+if(a$CalabazaJ[j-1]==1 & (a$Quelites[j-1]==0 & a$NoQuelites[j-1]==0) & a$Precipitacion[j-1]==1) a$Calabaza[j]=1
+if(a$CalabazaJ[j-1]==0 | (a$Quelites[j-1]==1 | a$NoQuelites[j-1]==1) | a$Precipitacion[j-1]==0) a$Calabaza[j]=0
+
+#Granos
+if(a$Maiz[j-1]==1 & a$Precipitacion[j-1]==1 & ((a$Herbivoros[j-1]==1 & a$Depredadores[j-1]==1) | (a$Herbivoros[j-1]==0 & a$Depredadores[j-1]==0) | (a$Herbivoros[j-1]==0 & a$Depredadores[j-1]==1))) a$MaizG[j]=1
+if(a$Maiz[j-1]==0 | a$Precipitacion[j-1]==0 | (a$Herbivoros[j-1]==1 & a$Depredadores[j-1]==0)) a$MaizG[j]=0
+
+if(a$FrijolE[j-1]==1 & a$Precipitacion[j-1]==1 & ((a$Herbivoros[j-1]==1 & a$Depredadores[j-1]==1) | (a$Herbivoros[j-1]==0 & a$Depredadores[j-1]==0) | (a$Herbivoros[j-1]==0 & a$Depredadores[j-1]==1))) a$FrijolEG[j]=1
+if(a$FrijolE[j-1]==0 | a$Precipitacion[j-1]==0 | (a$Herbivoros[j-1]==1 & a$Depredadores[j-1]==0)) a$FrijolEG[j]=0
+
+if(a$Calabaza[j-1]==1 & a$Presion[j-1]==0 & a$Polinizadores[j-1]==1 & a$Herbicida[j-1]==0 & ((a$Herbivoros[j-1]==1 & a$Depredadores[j-1]==1) | (a$Herbivoros[j-1]==0 & a$Depredadores[j-1]==0) | (a$Herbivoros[j-1]==0 & a$Depredadores[j-1]==1))) a$CalabazaG[j]=1
+if(a$Calabaza[j-1]==0 | a$Presion[j-1]==1 | a$Polinizadores[j-1]==0 | a$Herbicida[j-1]==1 | (a$Herbivoros[j-1]==1 & a$Depredadores[j-1]==0)) a$CalabazaG[j]=0
+	
+#Interior
+if(a$Herbicida[j-1]==0 & a$Desyerbe[j-1]==0 & a$Calabaza[j-1]==0) a$NoQuelites[j]=1
+if(a$Herbicida[j-1]==1 | a$Desyerbe[j-1]==1 | a$Calabaza[j-1]==1) a$NoQuelites[j]=0
+
+if(a$Herbicida[j-1]==0 & a$Calabaza[j-1]==0 & Siembra==0) a$Quelites[j]=1
+if(a$Herbicida[j-1]==1 | a$Calabaza[j-1]==1 | Siembra==1) a$Quelites[j]=0
+
+if(a$NoQuelites[j-1]==1 & a$Precipitacion[j-1]==1 & a$Herbicida[j-1]==0 & a$Desyerbe[j-1]==0) a$FloresNoQuelites[j]=1 
+if(a$NoQuelites[j-1]==0 | a$Precipitacion[j-1]==0 | a$Herbicida[j-1]==1 | a$Desyerbe[j-1]==1) a$FloresNoQuelites[j]=0
+
+if(a$Quelites[j-1]==1 & a$Precipitacion[j-1]==1 & a$Herbicida[j-1]==0) a$FloresQuelites[j]=1 
+if(a$Quelites[j-1]==0 | a$Precipitacion[j-1]==0 | a$Herbicida[j-1]==1) a$FloresQuelites[j]=0
+
+#Herbivoros
+if(a$Maiz[j-1]==1 | a$MaizJ[j-1]==1 | a$MaizG[j-1]==1) Maiz=1 
+if(a$Maiz[j-1]==0 & a$MaizJ[j-1]==0 & a$MaizG[j-1]==0) Maiz=0
+
+if(a$FrijolE[j-1]==1 | a$FrijolEG[j-1]==1) FrijolE=1
+if(a$FrijolE[j-1]==0 & a$FrijolEG[j-1]==0) FrijolE=0
+
+if(a$CalabazaJ[j-1]==1 | a$Calabaza[j-1]==1 | a$CalabazaG[j-1]==1) Calabaza=1
+if(a$CalabazaJ[j-1]==0 & a$Calabaza[j-1]==0 & a$CalabazaG[j-1]==0) Calabaza=0
+
+if((Maiz==1 | FrijolE==1 | Calabaza==1 | a$Quelites[j-1]==1 | a$NoQuelites[j-1]==1 | a$FloresQuelites[j-1]==1 | a$FloresNoQuelites[j-1]==1) & a$Depredadores[j-1]==0 & a$Plaguicida[j-1]==0) a$Herbivoros[j]=1 
+if((Maiz==0 & FrijolE==0 & Calabaza==0 & a$Quelites[j-1]==0 & a$NoQuelites[j-1]==0 & a$FloresQuelites[j-1]==1 & a$FloresNoQuelites[j-1]==1) | a$Depredadores[j-1]==1 | a$Plaguicida[j-1]==1) a$Herbivoros[j]=0
+
+if(a$Herbivoros[j-1]==1) a$Plaguicida[j]=1
+if(a$Herbivoros[j-1]==0) a$Plaguicida[j]=0
+
+#Depredadores
+if(a$Herbivoros[j-1]==1 & a$Borde[j-1]==1 & a$Plaguicida[j-1]==0) a$Depredadores[j]=1 
+if(a$Herbivoros[j-1]==0 | a$Borde[j-1]==0 | a$Plaguicida[j-1]==1) a$Depredadores[j]=0
+
+#Polinizadores
+if((a$Calabaza[j-1]==1 | a$FloresBorde[j-1]==1 | a$FloresQuelites[j-1]==1 | a$FloresNoQuelites[j-1]==1) & a$Plaguicida[j-1]==0) a$Polinizadores[j]=1 
+if((a$Calabaza[j-1]==0 & a$FloresBorde[j-1]==0 & a$FloresQuelites[j-1]==0 & a$FloresNoQuelites[j-1]==0) | a$Plaguicida[j-1]==1) a$Polinizadores[j]=0
+
+#Fijando nodos
+a$Herbicida[j]=0
+a$Plaguicida[j]=0
+a$CalabazaJ[j]=0
+
+		a<-as.matrix(a)
+		a<-t(a)
+# 		print(a)
+
+###Bloque 3 detector de atractores.
+			b <- abs(a[,j]-a[,1:(j-1)])
+			if(is.null(dim(b))){
+				dh.b <-sum(b)
+			}else{
+				dh.b <-colSums(b)
+			}			
+			dh <-any(dh.b==0)
+			if(dh){
+#					writeLines(paste("Se alcanzo el atractor en la iteracion:",k+1))
+#			   	writeLines(paste("El periodo del atractor es de:",k))
+#					print(a[,(j-k):(j-1)])#Imprime el atractor al que se llego.
+				k <-min(which(dh.b==0))
+				if(i>=2){
+					l.lista.atr <-length(lista.atr)
+					for(o in 1:l.lista.atr){
+						if(is.null(lista.atr[[o]])){
+							next
+						}
+						if(is.null(dim(lista.atr[[o]]))){
+							q <-abs(lista.atr[[o]]-a[,k:(j-1)])
+							if(is.null(dim(q))){
+									Dh.q <-sum(q)	
+								}else{
+									Dh.q <-colSums(q)
+								}
+								Dh <-any(Dh.q==0)
+								if(Dh){
+#									writeLines(paste("El atractor proveniente del estado",i,"ya se habia guardado en la posicion",o))	
+									cuenca[o]=cuenca[o]+1
+									break
+								}
+						}else{
+							ncol.atr <-ncol(lista.atr[[o]])
+							for(p in 1:ncol.atr){
+								q <-abs(lista.atr[[o]][,p]-a[,k:(j-1)])
+								if(is.null(dim(q))){
+									Dh.q <-sum(q)	
+								}else{
+									Dh.q <-colSums(q)
+								}
+								Dh <-any(Dh.q==0)
+								if(Dh){
+#									writeLines(paste("El atractor proveniente del estado",i,"ya se habia guardado en la posicion",o))	
+									cuenca[o]=cuenca[o]+1
+									break
+								}
+							}
+						}
+						if(Dh){
+							break
+						}
+					}
+					if(Dh){
+						break
+					}
+				}
+				lista.atr[[i]] <-a[,k:(j-1)]
+				lista.tray[[i]] <-a
+#				print(a)
+				break
+			}		
+		}	
+	}		
+cuenca <-cuenca[1:length(lista.atr)]
+cuenca <-round(cuenca/sum(cuenca)*100,2)
+names(lista.atr) <-paste(cuenca,"%")
+lista.atr<-lista.atr[!sapply(lista.atr,is.null)]
+return(lista.atr)
+#return(lista.tray)
+}
+lista.repe[[r]]<-obtAtr(ei,nodos)
+names(lista.repe)<-paste("Repeticion ",r)
+}
+save(lista.repe,file="~/Dropbox/Chido/Experimento/mzfre/mzfre_trad_per_pp_100_3000_1212.RData")

@@ -1,0 +1,25 @@
+\documentclass[spanish,11pt]{article}
+\pdfpagewidth 14in
+\pdfpageheight 13in
+\usepackage[spanish]{babel}
+\selectlanguage{spanish}
+\usepackage[utf8]{inputenc}
+\begin{document}
+
+% Table created by stargazer v.5.2 by Marek Hlavac, Harvard University. E-mail: hlavac at fas.harvard.edu
+% Date and time: lun, jul 03, 2017 - 15:54:52
+\begin{table}[!htbp] \centering 
+  \caption{} 
+  \label{} 
+\begin{tabular}{@{\extracolsep{5pt}}lccccc} 
+\\[-1.8ex]\hline 
+\hline \\[-1.8ex] 
+Statistic & \multicolumn{1}{c}{N} & \multicolumn{1}{c}{Mean} & \multicolumn{1}{c}{St. Dev.} & \multicolumn{1}{c}{Min} & \multicolumn{1}{c}{Max} \\ 
+\hline \\[-1.8ex] 
+Nivel\_perturbación & 5 & 0.184 & 0.060 & 0.140 & 0.250 \\ 
+Permanencia\_promedio & 5 & 0.309 & 0.057 & 0.253 & 0.400 \\ 
+Riesgo\_relativo & 5 & 0.075 & 0.057 & 0.005 & 0.145 \\ 
+\hline \\[-1.8ex] 
+\end{tabular} 
+\end{table} 
+\end{document}
